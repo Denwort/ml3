@@ -29,6 +29,11 @@ from sklearn.metrics import accuracy_score,make_scorer, f1_score
 from sklearn.linear_model import Lasso
 from sklearn.model_selection import GridSearchCV
 
+
+from imblearn.pipeline import Pipeline
+from sklearn.base import clone
+from imblearn.over_sampling import SMOTE
+
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import RandomForestClassifier
@@ -61,49 +66,6 @@ def plotTarget(data, target):
   plt.title('Distribución de Categorías')
   plt.show()
 
-# Grafico de barras variables categoricas
-def analisisCategoricas(df):
-  varCategoricas = df.select_dtypes(exclude=np.number).columns
-  print("Categoricas: ", varCategoricas)
-  n_vars = len(varCategoricas)
-  n_cols = 3
-  n_rows = (n_vars + n_cols - 1) // n_cols  if  (n_vars + n_cols - 1) // n_cols > 0 else 1
-  fig, axis = plt.subplots(n_rows, n_cols, figsize=(20, n_rows * 4))
-  index = 0
-  for i in range(n_rows):
-    for j in range(n_cols):
-      if index < n_vars:
-        ax = sns.countplot(x=varCategoricas[index], data=df, ax=axis[i][j])
-        if varCategoricas[index] in ['job']:
-          for item in ax.get_xticklabels():
-            item.set_rotation(15)
-        for p in ax.patches:
-          height = p.get_height()
-          ax.text(p.get_x()+p.get_width()/2.,
-            height + 3,
-            '{:1.2f}%'.format(height/len(df)*100),
-            ha="center")
-        index += 1
-      else:
-        axis[i, j].set_visible(False)
-  plt.tight_layout()
-  plt.show()
-
-def plotCategorica(datos):
-  valores_unicos, recuentos = np.unique(datos, return_counts=True)
-
-  # Crear el gráfico de barras
-  plt.bar(valores_unicos, recuentos)
-
-  # Agregar etiquetas y título
-  plt.xlabel('Valor')
-  plt.ylabel('Recuento')
-  plt.title('Recuento de valores')
-
-  # Mostrar el gráfico
-  plt.show()
-  
-
 # Histograma y diagrama de caja para variables numericas
 def analisisNumericas(df):
   varNumericas = df.select_dtypes(include=np.number).columns
@@ -126,28 +88,6 @@ def nullAnalysis(df):
   print("Suma de nulos:")
   print(null_sum)
 
-# Escalamiento
-
-#  Escalamiento con StandardScaler
-def standardScaler(df, target):
-  y = df[target]
-  X = df.drop(columns=[target])
-  scaler = StandardScaler()
-  df_scaled = scaler.fit_transform(X)
-  df_scaled = pd.DataFrame(df_scaled, columns=X.columns, index=df.index)
-  df_final = df_scaled.join(y)
-  return df_final
-
-#  Escalamiento con MinMaxScaler
-def minMaxScaler(df, target):
-  y = df[target]
-  X = df.drop(columns=[target])
-  scaler = MinMaxScaler()
-  df_scaled = scaler.fit_transform(X)
-  df_scaled = pd.DataFrame(df_scaled, columns=X.columns, index=df.index)
-  df_final = df_scaled.join(y)
-  return df_final
-  
 # Encoding
 
 #  Encoding con LabelEncoder
@@ -216,81 +156,17 @@ def tratamientoOutliers(df, target, contamination, plot):
 # Logistic Regression
 
 #  Logistic regression grid search
-def decisionTreeTunning(data, target):
 
-  train_val,test=train_test_split(data, test_size=0.1,random_state=42)
-  train,validate=train_test_split(train_val, test_size=0.2,random_state=42)
-  
-  XTrain=train.drop(target,axis="columns")
-  yTrain=train[target]
-  XTest=test.drop(target,axis="columns")
-  yTest=test[target]
-  XVal=validate.drop(target,axis="columns")
-  yVal=validate[target]
-  
-  accEntropyTrain=[]
-  accEntropy=[]
-  accGiniTrain=[]
-  accGini=[]
-  accEntropy=[]
-  maxDepth=[]
-  
-  accEntTrain=[]
-  
-  for i in range(1,40):
-      #Entropy
-      model=DecisionTreeClassifier(criterion="entropy",max_features="log2",max_depth=i,random_state=2)
-      model.fit(XTrain,yTrain)
-      # Train accuracy
-      pred=model.predict(XTrain)
-      acc=accuracy_score(yTrain,pred)
-      accEntropyTrain.append(acc)
-      # Validate accuracy
-      pred=model.predict(XVal)
-      acc=accuracy_score(yVal,pred)
-      accEntropy.append(acc)
-      
-      model=DecisionTreeClassifier(criterion="gini",max_features="log2",max_depth=i,random_state=2)
-      model.fit(XTrain,yTrain)
-      pred=model.predict(XTest)
-      acc=accuracy_score(yTest,pred)
-      accGini.append(acc)
-      
-      
-      maxDepth.append(i)
-   
-    
-  print(accEntropy)
-  print("train data")
-  print(accEntTrain)
-
-  d=pd.DataFrame({"acc_entropyT":pd.Series(accEntTrain),"acc_entropy":pd.Series(accEntropy),"max_depth":pd.Series(maxDepth)})
-    
-  plt.plot("max_depth","acc_entropy",'b',data=d,label="entropy")
-  plt.plot("max_depth","acc_entropyT",'r',data=d,label="entropy_train")
-  plt.xlabel("max_depth")
-  plt.ylabel("accuracy")
-  plt.legend()
-
-  '''
-  dt=DecisionTreeClassifier(criterion="entropy",max_features="log2",max_depth=5,random_state=2)
-  dt.fit(XTrain,yTrain)
-  pred=model.predict(XTest)
-  acc=accuracy_score(yTest,pred)
-  print(acc)
-  print(dt.tree_.threshold)
-  '''
-
-  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=123)
-  dt = DecisionTreeClassifier(random_state=123)
+def decisionTreeTunning1(X,y):
+  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+  dt_classifier = DecisionTreeClassifier(random_state=42)
   param_grid = {
-    'criterion': ['gini', 'entropy'],
-    'max_features': [None, 'sqrt', 'log2'],
-    'max_depth': [None, 10, 20, 30, 40, 50],
-    'min_samples_split': [2, 5, 10, 20],
-    'min_samples_leaf': [1, 2, 5, 10]
+      'max_depth': [None, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+      'min_samples_split': [2, 5, 10, 20],
+      'min_samples_leaf': [1, 2, 5, 10],
+      'criterion': ['gini', 'entropy']
   }
-  grid_search = GridSearchCV(estimator=dt, param_grid=param_grid, cv=10, n_jobs=-1, verbose=2)
+  grid_search = GridSearchCV(estimator=dt_classifier, param_grid=param_grid, cv=5, n_jobs=-1, verbose=2)
   grid_search.fit(X_train, y_train)
   print("Hiperparametros ",grid_search.best_params_)
   print("Ccore ",grid_search.best_score_)
@@ -301,8 +177,7 @@ def decisionTreeTunning(data, target):
   print(f"Precisión en el conjunto de prueba: {accuracy}")
   return grid_search.best_score_
 
-#  Logistic regression cross-validation metrics
-def decisionTreeCV(X, y):
+def decisionTreeValidation(X, y):
     # Logistic regresion
     X = X.values
     dt=DecisionTreeClassifier(criterion= 'gini', max_features='log2', max_depth= 10, min_samples_leaf= 2, min_samples_split= 20, random_state=123)
@@ -338,61 +213,105 @@ def decisionTreeCV(X, y):
     plt.title('Matriz de Confusión')
     plt.show()
 
+def decisionTreeTunning2(data, target):
+  train_val,test=train_test_split(data, test_size=0.1,random_state=42)
+  train,validate=train_test_split(train_val, test_size=0.2,random_state=42)
+  XTrain=train.drop(target,axis="columns")
+  yTrain=train[target]
+  XTest=test.drop(target,axis="columns")
+  yTest=test[target]
+  XVal=validate.drop(target,axis="columns")
+  yVal=validate[target]
+  
+  accEntropyTrain=[]
+  accEntropyVal=[]
+  accGiniTrain=[]
+  accGiniVal=[]
+  maxDepth=[]
+
+  for i in range(1,40):
+      # Entropy
+      model=DecisionTreeClassifier(criterion="entropy",max_features="log2",max_depth=i,random_state=2)
+      model.fit(XTrain,yTrain)
+      #  Train
+      pred=model.predict(XTrain)
+      acc=accuracy_score(yTrain,pred)
+      accEntropyTrain.append(acc)
+      #  Validate
+      pred=model.predict(XVal)
+      acc=accuracy_score(yVal,pred)
+      accEntropyVal.append(acc)
+      # Gini
+      model=DecisionTreeClassifier(criterion="gini",max_features="log2",max_depth=i,random_state=2)
+      model.fit(XTrain,yTrain)
+      # Train
+      pred=model.predict(XTrain)
+      acc=accuracy_score(yTrain,pred)
+      accGiniTrain.append(acc)
+      #  Validate
+      pred=model.predict(XVal)
+      acc=accuracy_score(yVal,pred)
+      accGiniVal.append(acc)
+      
+      maxDepth.append(i)
+  
+  print("Entropy validation: ", accEntropyVal)
+
+  print("train data")
+  print(accEntropyTrain)
+  
+  
+  axes = plt.gca()
+  axes.set_xlim([1,40])
+  axes.set_ylim([0.80,1.05])
+  
+  
+  dataEntropy=pd.DataFrame({"acc_entropyT":pd.Series(accEntropyTrain),"acc_entropy":pd.Series(accEntropyVal),"max_depth":pd.Series(maxDepth)})
+  dataGini=pd.DataFrame({"acc_giniT":pd.Series(accGiniTrain),"acc_gini":pd.Series(accGiniVal),"max_depth":pd.Series(maxDepth)})
+
+  plt.plot("max_depth","acc_entropy",'b',data=dataEntropy,label="entropy")
+  plt.plot("max_depth","acc_entropyT",'r',data=dataEntropy,label="entropy_train")
+  plt.plot("max_depth","acc_gini",'g',data=dataGini,label="gini")
+  plt.plot("max_depth","acc_giniT",'y',data=dataGini,label="gini_train")
+  plt.xlabel("max_depth")
+  plt.ylabel("accuracy")
+  plt.legend()
+  plt.show()
+  
+  '''
+  dt=DecisionTreeClassifier(criterion="entropy",max_features="log2",max_depth=5,random_state=2)
+  dt.fit(XTrain,yTrain)
+  pred=model.predict(XTest)
+  acc=accuracy_score(yTest,pred)
+  print(acc)
+  print(dt.tree_.threshold)
+  '''
+  
+#  Logistic regression cross-validation metrics
+
+
 # SVC
 
-#  SVC grid search
-def svcGS(X,y):
-  svc=SVC(probability=True, random_state=123, class_weight='balanced')
-  param_grid = [
-      {'C': [0.01, 0.1, 1, 10], 'kernel': ['linear']},
-      {'C': [0.01, 0.1, 1, 10], 'kernel': ['poly'], 'gamma': [0.1, 0.01, 0.001, 'scale', 'auto'], 'degree': [2, 3, 4, 5], 'coef0': [0.0, 0.1, 0.5, 1.0]},
-      {'C': [0.01, 0.1, 1, 10], 'kernel': ['rbf'], 'gamma': [0.1, 0.01, 0.001, 'scale', 'auto']},
-      {'C': [0.01, 0.1, 1, 10], 'kernel': ['sigmoid'], 'gamma': [0.1, 0.01, 0.001, 'scale', 'auto'], 'coef0': [0.0, 0.1, 0.5, 1.0]}
-  ]
-  skf = StratifiedKFold(n_splits=10,shuffle=True,random_state=1)
-  grid_search=GridSearchCV(estimator=svc, param_grid=param_grid,cv=skf, scoring='f1_weighted', refit = True, verbose=2)
-  grid_search.fit(X,y)
-  
-  print("Hiperparametros ",grid_search.best_params_)
-  print("score ",grid_search.best_score_)
-  return grid_search.best_score_
+# Decision tree pruebas
+def decisiontreeGS(pipeline, X_train, y_train):
+  param_grid = {
+      'decisiontreeclassifier__criterion': ['gini', ''],
+      'decisiontreeclassifier__max_depth': [None, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],  # Profundidad máxima del árbol
+      'decisiontreeclassifier__min_samples_split': [2, 5, 10],     # Mínimo de muestras requeridas para dividir un nodo interno
+      'decisiontreeclassifier__min_samples_leaf': [1, 2, 4]         # Mínimo de muestras requeridas en un nodo hoja
+  }
+  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=5, scoring='accuracy', verbose=2, n_jobs=-1)
+  grid_search.fit(X_train, y_train)
+  print("Mejores hiperparámetros:")
+  print(grid_search.best_params_)
+  return grid_search.best_estimator_
 
-#  SVC cross validation metrics
-def svcCV(X,y):
-    X = X.values
-    #svc=SVC(C=1,kernel='sigmoid', gamma='auto', coef0=0.5, probability=True, random_state=123, class_weight='balanced')
-    svc=SVC(C=0.1,kernel='poly', degree=2, gamma=0.1, coef0=1.0, probability=True, random_state=123, class_weight='balanced')
-    skf=StratifiedKFold(n_splits=10,shuffle=True,random_state=1)
+def decisiontreeScore(modelo, X_test, y_test):
+    y_pred = modelo.predict(X_test)
+    print("Reporte de Clasificación:")
+    print(classification_report(y_test, y_pred))
+    print("Accuracy: ", accuracy_score(y_test, y_pred))
 
-    # Calcular todas las etiquetas
-    true_labels = []
-    predicted_labels = []
-    for train_index, test_index in skf.split(X, y):
-        X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = y[train_index], y[test_index]
-        svc.fit(X_train, y_train)
-        y_pred = svc.predict(X_test)
-        true_labels.extend(y_test)
-        predicted_labels.extend(y_pred)
-
-    # Reporte de clasificación
-    print("\nReporte de Clasificación:")
-    scores = cross_val_score(svc, X, y, cv=skf, scoring='f1_weighted')
-    f1_weighted = scores.mean()
-    print(classification_report(true_labels, predicted_labels))
-    print("F1-SCORE: ", f1_weighted)
-
-    # Matriz de confusión
-    conf_matrix = confusion_matrix(true_labels, predicted_labels)
-    plt.figure(figsize=(8, 6))
-    mapping = {'CYT': 0, 'NUC': 1, 'MIT': 2, 'ME3': 3, 'ME2': 4, 'ME1': 5, 'EXC': 6, 'VAC': 7, 'POX': 8, 'ERL': 9}
-    sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d', cbar=False,
-                xticklabels=mapping,
-                yticklabels=mapping)
-    plt.xlabel('Predicción')
-    plt.ylabel('Etiqueta Real')
-    plt.title('Matriz de Confusión')
-    plt.show()
   
 # Feature Selection
 
@@ -437,19 +356,19 @@ def main():
     
     # Dropear ID
     df = df.iloc[:, df.columns != 'Sequence_Name'] 
+
+    #Analisis exploratorio
+    #analisisNumericas(df)
+    #plotTarget(df, 'localization_site')
     
     # Aplicar feature selection
     #  Forward selection
     #df = df[['Status', 'Drug', 'Age', 'Sex', 'Platelets', 'Tryglicerides', 'Edema']] 
     #  Recursive Forward Elimination
     #df = df[['Status', 'Drug','N_Days', 'Age', 'Bilirubin', 'Alk_Phos', 'Platelets', 'Prothrombin', 'Stage', 'Sex', 'Ascites', 'Hepatomegaly']]
-             
-    #Analisis exploratorio
-    #analisisNumericas(df)
-    #plotTarget(df, 'localization_site')
 
     # Analisis de nulos
-    nullAnalysis(df)
+    #nullAnalysis(df)
 
     # Encoding
     mapping = {
@@ -466,27 +385,33 @@ def main():
     }
     df = encodingLabel(df, 'localization_site', mapping)
     
-    # Escalamiento
-    df=standardScaler(df, 'localization_site')
-    #df=minMaxScaler(df, 'Status')
-    
     # Tratamiento de outliers    
-    #df = tratamientoOutliers(df, 'localization_site', contamination=0.07, plot=False)
+    #df = tratamientoOutliers(df, 'localization_site', contamination=0.01, plot=False)
 
-    # Balanceo de datos
-    #  xd
+    # Separar X, y, train, test
+    X = df.drop('localization_site',axis=1)
+    y = df['localization_site']
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=123)
 
-    '''
-    # X,y para los modelos
-    #X = df.drop('localization_site',axis=1)
-    #y = df['localization_site']
-    # Reduccion a clasificacion binaria
-    #y=y.apply(lambda x:1 if x<2 else 0) # 0:vivo, 1:muerto
+    # Pipeline: Balanceo, Escalamiento, 
+    pipeline = Pipeline([
+        #('smote', SMOTE(k_neighbors=3, random_state=123)),  # Balanceo
+        ('scaler', StandardScaler())       # Escalamiento
+    ])
+
+    # Modelos
+
+    # Decision Tree
+    dt_pipeline = clone(pipeline).set_params(**{'steps': pipeline.steps + 
+      [('decisiontreeclassifier', DecisionTreeClassifier(random_state=123))]})
+    modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
+    decisiontreeScore(modelo, X_test, y_test)
     '''
     # Decision tree
-    lr = decisionTreeTunning(df, 'localization_site') 
+    #lr = decisionTreeGS(X, y)
+    #lr = decisionTreeFOR(df, 'localization_site') 
     #decisionTreeCV(X,y)
-    '''
+    
     # Ada Boost
     lr = logisticGS(X,y) 
     logisticCV(X,y)
