@@ -9,7 +9,7 @@ from sklearn.neighbors import LocalOutlierFactor
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, LabelEncoder
 from sklearn.svm import SVC
-from sklearn.model_selection import cross_val_score,GridSearchCV
+from sklearn.model_selection import RandomizedSearchCV, cross_val_score,GridSearchCV
 from sklearn.model_selection import KFold,LeaveOneOut,StratifiedKFold
 from scipy import stats
 import statsmodels.api as sm
@@ -37,6 +37,8 @@ from imblearn.over_sampling import SMOTE
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.ensemble import RandomForestClassifier
+
+from collections import OrderedDict
 
 # Configuracion de pandas para imprimir todo el data set
 pd.set_option('display.max_rows', None)
@@ -153,10 +155,8 @@ def tratamientoOutliers(df, target, contamination, plot):
   df = df.reset_index(drop=True)
   return df
 
-# Logistic Regression
-
-#  Logistic regression grid search
-
+'''
+# BORRADOR
 def decisionTreeTunning1(X,y):
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
   dt_classifier = DecisionTreeClassifier(random_state=42)
@@ -278,77 +278,192 @@ def decisionTreeTunning2(data, target):
   plt.legend()
   plt.show()
   
-  '''
-  dt=DecisionTreeClassifier(criterion="entropy",max_features="log2",max_depth=5,random_state=2)
-  dt.fit(XTrain,yTrain)
-  pred=model.predict(XTest)
-  acc=accuracy_score(yTest,pred)
-  print(acc)
-  print(dt.tree_.threshold)
-  '''
-  
-#  Logistic regression cross-validation metrics
+  #dt=DecisionTreeClassifier(criterion="entropy",max_features="log2",max_depth=5,random_state=2)
+  #dt.fit(XTrain,yTrain)
+  #pred=model.predict(XTest)
+  #acc=accuracy_score(yTest,pred)
+  #print(acc)
+  #print(dt.tree_.threshold)
 
+'''
 
-# SVC
+# Modelos
 
-# Decision tree pruebas
-def decisiontreeGS(pipeline, X_train, y_train):
+def agregar_modelo(pipeline, classifier):
+  model = clone(pipeline)
+  model.steps.append(('classifier', classifier))
+  return model
+
+def get_score(modelo, X_test, y_test):
+    y_pred = modelo.predict(X_test)
+    print("Reporte de Clasificación:")
+    print(classification_report(y_test, y_pred, zero_division=0))
+    print("Accuracy: ", accuracy_score(y_test, y_pred))
+
+def nested_cv(pipeline, gs_function, X, y):
+    outer_cv = KFold(n_splits=5, shuffle=True, random_state=123)
+    inner_cv = KFold(n_splits=5, shuffle=True, random_state=123)
+    outer_scores = []
+    for train_idx, test_idx in outer_cv.split(X):
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y[train_idx], y[test_idx]
+        best_model = gs_function(pipeline, X_train, y_train, inner_cv)
+        y_pred = best_model.predict(X_test)
+        score = accuracy_score(y_test, y_pred)
+        outer_scores.append(score)
+        print(f"Nested CV Accuracy: {np.mean(outer_scores):.4f} ± {np.std(outer_scores):.4f}")
+
+#  Decision tree
+def decisiontreeGS(pipeline, X_train, y_train, cv=5):
   param_grid = {
-      'decisiontreeclassifier__criterion': ['gini', ''],
-      'decisiontreeclassifier__max_depth': [None, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],  # Profundidad máxima del árbol
-      'decisiontreeclassifier__min_samples_split': [2, 5, 10],     # Mínimo de muestras requeridas para dividir un nodo interno
-      'decisiontreeclassifier__min_samples_leaf': [1, 2, 4]         # Mínimo de muestras requeridas en un nodo hoja
+      'classifier__criterion': ['gini', 'entropy'],
+      'classifier__max_depth': [None, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
+      'classifier__min_samples_split': [2, 5, 10],
+      'classifier__min_samples_leaf': [1, 2, 4]
   }
-  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=5, scoring='accuracy', verbose=2, n_jobs=-1)
+  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2, n_jobs=-1)
+  grid_search.fit(X_train, y_train)
+  print("Mejores hiperparámetros:")
+  print(grid_search.best_params_)
+  
+  return grid_search.best_estimator_
+
+#  AdaBoost
+def adaboostGS(pipeline, X_train, y_train, cv=5):
+  param_grid = {
+      'classifier__n_estimators': [10, 100, 200, 1000],
+      'classifier__learning_rate': [0.001, 0.005, .01, 0.05, 0.1, 0.5, 1, 5, 10]
+  }
+  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2, n_jobs=-1)
   grid_search.fit(X_train, y_train)
   print("Mejores hiperparámetros:")
   print(grid_search.best_params_)
   return grid_search.best_estimator_
 
-def decisiontreeScore(modelo, X_test, y_test):
-    y_pred = modelo.predict(X_test)
-    print("Reporte de Clasificación:")
-    print(classification_report(y_test, y_pred))
-    print("Accuracy: ", accuracy_score(y_test, y_pred))
+# Random forest
+def randomforestOOB(pipeline, X_train, y_train):
+  param_distributions = {
+      'classifier__n_estimators': [50, 100, 200, 500, 1000],
+      'classifier__max_features': [None, 'sqrt', 'log2'],
+      'classifier__max_depth': [None, 1, 5, 10, 20, 40],
+      'classifier__bootstrap': [True]
+  }
 
+  random_search = RandomizedSearchCV(
+      estimator=pipeline,
+      param_distributions=param_distributions,
+      n_iter=100,
+      cv=5,
+      scoring='accuracy',
+      verbose=2,
+      n_jobs=-1,
+      random_state=123
+  )
   
-# Feature Selection
+  random_search.fit(X_train, y_train)
+  print("Mejores hiperparámetros:")
+  print(random_search.best_params_)
+  
+  return random_search.best_estimator_
 
-  # Algoritmo forward selection
-def forward_selection(X, y, threshold=0.01):
-    X_int = pd.DataFrame({'intercept': np.ones(len(X))}).join(X)
-    included = ['intercept']
-    excluded = list(set(X_int.columns) - set(included))
-    best_features = []
-    current_score = 0.0
-    while excluded:
-        scores_with_candidates = []
-        for feature in excluded:
-            model_features = included + [feature]
-            X_subset = X_int[model_features]
-            model = LogisticRegression(max_iter=1000, solver='lbfgs', multi_class='multinomial')
-            scores = cross_val_score(model, X_subset, y, cv=5, scoring='accuracy')
-            mean_score = np.mean(scores)
-            scores_with_candidates.append((mean_score, feature))
-        scores_with_candidates.sort(reverse=True)
-        best_score, best_feature = scores_with_candidates.pop()
-        if best_feature is None or best_score <= current_score + threshold:
-            break
-        included.append(best_feature)
-        excluded.remove(best_feature)
-        best_features.append((best_feature, best_score))
-        current_score = best_score
-    print(best_features)
-    return included, best_features
 
-  # Algoritmo Recursive Forward Elimination
+def plotRandomForest(X, y):
+  ensemble_clfs = [
+      (
+          "RandomForestClassifier, max_features='sqrt'",
+          RandomForestClassifier(
+              warm_start=True,
+              oob_score=True,
+              max_features="sqrt",
+              random_state=123,
+          ),
+      ),
+      (
+          "RandomForestClassifier, max_features='log2'",
+          RandomForestClassifier(
+              warm_start=True,
+              max_features="log2",
+              oob_score=True,
+              random_state=123,
+          ),
+      ),
+      (
+          "RandomForestClassifier, max_features=None",
+          RandomForestClassifier(
+              warm_start=True,
+              max_features=None,
+              oob_score=True,
+              random_state=123,
+          ),
+      ),
+  ]
+
+  # Map a classifier name to a list of (<n_estimators>, <error rate>) pairs.
+  error_rate = OrderedDict((label, []) for label, _ in ensemble_clfs)
+
+  # Range of `n_estimators` values to explore.
+  min_estimators = 50
+  max_estimators = 500
+
+  for label, clf in ensemble_clfs:
+      for i in range(min_estimators, max_estimators + 1, 5):
+          clf.set_params(n_estimators=i)
+          clf.fit(X, y)
+
+          # Record the OOB error for each `n_estimators=i` setting.
+          oob_error = 1 - clf.oob_score_
+          error_rate[label].append((i, oob_error))
+
+  # Generate the "OOB error rate" vs. "n_estimators" plot.
+  for label, clf_err in error_rate.items():
+      xs, ys = zip(*clf_err)
+      plt.plot(xs, ys, label=label)
+
+  plt.xlim(min_estimators, max_estimators)
+  plt.xlabel("n_estimators")
+  plt.ylabel("OOB error rate")
+  plt.legend(loc="upper right")
+  plt.show()
+
+# Feature selection
+#  Algoritmo forward selection
+def forward_selection(X, y, cv=5):
+  selected_features = []
+  remaining_features = list(X.columns)
+  best_score = -np.inf
+  while remaining_features:
+    scores = []
+    for feature in remaining_features:
+      current_features = selected_features + [feature]
+      X_subset = X[current_features]
+      model = LogisticRegression(random_state=123)
+      score = np.mean(cross_val_score(model, X_subset, y, cv=cv, scoring='accuracy'))
+      scores.append((score, feature))
+    scores.sort(reverse=True, key=lambda x: x[0])
+    best_score, best_feature = scores[0]
+    selected_features.append(best_feature)
+    remaining_features.remove(best_feature)
+  print(f"Selected Features: {selected_features}, Score: {best_score}")
+  return selected_features
+
+#  Algoritmo Recursive Forward Elimination
 def selectFeatures(X,y, n_features):
   model=LogisticRegression()
   rfe=RFE(model,n_features_to_select=n_features)
   fit=rfe.fit(X, y)
   print("selected features ",X.columns[fit.support_])
+  return X.columns[fit.support_]
 
+# Feature selection con Random Forest
+def rf_features(X, y, n_estimators=100, random_state=123):
+  rf = RandomForestClassifier(n_estimators=n_estimators, random_state=random_state, oob_score=True)
+  rf.fit(X, y)
+  importances = rf.feature_importances_
+  feature_names = X.columns
+  feature_importances = pd.DataFrame({'feature': feature_names, 'importance': importances})
+  feature_importances = feature_importances.sort_values(by='importance', ascending=False)
+  print(feature_importances)
+  return feature_importances
 
 def main():
     
@@ -402,27 +517,27 @@ def main():
     # Modelos
 
     # Decision Tree
-    dt_pipeline = clone(pipeline).set_params(**{'steps': pipeline.steps + 
-      [('decisiontreeclassifier', DecisionTreeClassifier(random_state=123))]})
-    modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
-    decisiontreeScore(modelo, X_test, y_test)
-    '''
-    # Decision tree
-    #lr = decisionTreeGS(X, y)
-    #lr = decisionTreeFOR(df, 'localization_site') 
-    #decisionTreeCV(X,y)
+    #dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
+    #modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
+    #get_score(modelo, X_test, y_test)
     
     # Ada Boost
-    lr = logisticGS(X,y) 
-    logisticCV(X,y)
+    #ab_pipeline = agregar_modelo(pipeline, AdaBoostClassifier(algorithm="SAMME", random_state=123))
+    #modelo = adaboostGS(ab_pipeline, X_train, y_train)
+    #get_score(modelo, X_test, y_test)
+    #nested_cv(ab_pipeline, adaboostGS, X, y)
 
-    # Random Forest
-    svc = svcGS(X,y)
-    svcCV(X, y)
+    # Random forest
+    # Calibrar co OOB (Out-of-bag)
+    #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
+    #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
+    #get_score(modelo, X_test, y_test)
+    #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
+    #plotRandomForest(X, y)
 
     # Feature selection
-    forward_selection(X, y, 0.001)
+    forward_selection(X, y)
     selectFeatures(X, y, 10)
-    '''
-
+    rf_features(X, y)
+    
 main()
