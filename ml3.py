@@ -155,7 +155,7 @@ def tratamientoOutliers(df, target, contamination, plot):
   df = df.reset_index(drop=True)
   return df
 
-'''
+
 # BORRADOR
 def decisionTreeTunning1(X,y):
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -285,14 +285,13 @@ def decisionTreeTunning2(data, target):
   #print(acc)
   #print(dt.tree_.threshold)
 
-'''
 
 # Modelos
 
 def agregar_modelo(pipeline, classifier):
-  model = clone(pipeline)
-  model.steps.append(('classifier', classifier))
-  return model
+    model = clone(pipeline)
+    model.steps.append(('classifier', classifier))
+    return model
 
 def get_score(modelo, X_test, y_test):
     y_pred = modelo.predict(X_test)
@@ -321,7 +320,7 @@ def decisiontreeGS(pipeline, X_train, y_train, cv=5):
       'classifier__min_samples_split': [2, 5, 10],
       'classifier__min_samples_leaf': [1, 2, 4]
   }
-  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2, n_jobs=-1)
+  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=1, n_jobs=-1)
   grid_search.fit(X_train, y_train)
   print("Mejores hiperparámetros:")
   print(grid_search.best_params_)
@@ -334,7 +333,7 @@ def adaboostGS(pipeline, X_train, y_train, cv=5):
       'classifier__n_estimators': [10, 100, 200, 1000],
       'classifier__learning_rate': [0.001, 0.005, .01, 0.05, 0.1, 0.5, 1, 5, 10]
   }
-  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=2, n_jobs=-1)
+  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=1, n_jobs=-1)
   grid_search.fit(X_train, y_train)
   print("Mejores hiperparámetros:")
   print(grid_search.best_params_)
@@ -355,7 +354,7 @@ def randomforestOOB(pipeline, X_train, y_train):
       n_iter=100,
       cv=5,
       scoring='accuracy',
-      verbose=2,
+      verbose=1,
       n_jobs=-1,
       random_state=123
   )
@@ -443,7 +442,7 @@ def forward_selection(X, y, cv=5):
     best_score, best_feature = scores[0]
     selected_features.append(best_feature)
     remaining_features.remove(best_feature)
-  print(f"Selected Features: {selected_features}, Score: {best_score}")
+  print(f"Forward selection: {selected_features}, Score: {best_score}")
   return selected_features
 
 #  Algoritmo Recursive Forward Elimination
@@ -451,18 +450,18 @@ def selectFeatures(X,y, n_features):
   model=LogisticRegression()
   rfe=RFE(model,n_features_to_select=n_features)
   fit=rfe.fit(X, y)
-  print("selected features ",X.columns[fit.support_])
+  print("Recursive forward elimination: ",X.columns[fit.support_])
   return X.columns[fit.support_]
 
 # Feature selection con Random Forest
-def rf_features(X, y, n_estimators=100, random_state=123):
-  rf = RandomForestClassifier(n_estimators=n_estimators, random_state=random_state, oob_score=True)
+def rf_features(X, y, n_estimators=100):
+  rf = RandomForestClassifier(n_estimators=n_estimators, random_state=123, oob_score=True)
   rf.fit(X, y)
   importances = rf.feature_importances_
   feature_names = X.columns
   feature_importances = pd.DataFrame({'feature': feature_names, 'importance': importances})
   feature_importances = feature_importances.sort_values(by='importance', ascending=False)
-  print(feature_importances)
+  print("Random forest features: ", feature_importances)
   return feature_importances
 
 def main():
@@ -477,10 +476,7 @@ def main():
     #plotTarget(df, 'localization_site')
     
     # Aplicar feature selection
-    #  Forward selection
-    #df = df[['Status', 'Drug', 'Age', 'Sex', 'Platelets', 'Tryglicerides', 'Edema']] 
-    #  Recursive Forward Elimination
-    #df = df[['Status', 'Drug','N_Days', 'Age', 'Bilirubin', 'Alk_Phos', 'Platelets', 'Prothrombin', 'Stage', 'Sex', 'Ascites', 'Hepatomegaly']]
+    #df = df[['localization_site', 'alm', 'mit', 'mcg', 'gvh', 'vac', 'nuc', 'pox', 'erl']] 
 
     # Analisis de nulos
     #nullAnalysis(df)
@@ -510,16 +506,23 @@ def main():
 
     # Pipeline: Balanceo, Escalamiento, 
     pipeline = Pipeline([
-        #('smote', SMOTE(k_neighbors=3, random_state=123)),  # Balanceo
+        ('smote', SMOTE(k_neighbors=2, random_state=123)),  # Balanceo
         ('scaler', StandardScaler())       # Escalamiento
     ])
-
+    '''
+    print(X_train.head())
+    print(y_train.head())
+    a, b = pipeline.fit_resample(X_train, y_train)
+    new_df = pd.DataFrame(a, columns=X_train.columns)
+    new_df['localization_site'] = b 
+    plotTarget(new_df, 'localization_site')
+    '''
     # Modelos
 
     # Decision Tree
-    #dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
-    #modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
-    #get_score(modelo, X_test, y_test)
+    dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
+    modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
+    get_score(modelo, X_test, y_test)
     
     # Ada Boost
     #ab_pipeline = agregar_modelo(pipeline, AdaBoostClassifier(algorithm="SAMME", random_state=123))
@@ -536,8 +539,8 @@ def main():
     #plotRandomForest(X, y)
 
     # Feature selection
-    forward_selection(X, y)
-    selectFeatures(X, y, 10)
-    rf_features(X, y)
+    #forward_selection(X, y)
+    #selectFeatures(X, y, 10)
+    #rf_features(X, y)
     
 main()
