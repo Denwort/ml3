@@ -58,8 +58,9 @@ def load():
 def plotTarget(data, target):
   categoria_counts = data[target].value_counts()
   porcentajes = data[target].value_counts(normalize=True) * 100
-  print("Cantidad: ", categoria_counts)
-  print("Porcentajes: ", porcentajes)
+  print(f"Cat\tCant\tPorc")
+  for categoria, cantidad, porcentaje in zip(categoria_counts.index, categoria_counts.values, porcentajes.values):
+    print(f"{categoria}\t{cantidad}\t{porcentaje:.2f}%")
   categorias_ordenadas = categoria_counts.index
   plt.figure(figsize=(8, 6))
   plt.bar(categorias_ordenadas, categoria_counts, color='skyblue')
@@ -81,6 +82,16 @@ def analisisNumericas(df):
     plt.show()
     print("\n")
 
+# Matriz de correlacion
+def correlacion(df, target):
+  df = df.drop(columns=[target])
+  correlation_matrix = df.corr()
+  print(correlation_matrix)
+  plt.figure(figsize=(10, 8))
+  sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f')
+  plt.title('Matriz de Correlación')
+  plt.show()
+
 # Analisis de nulos
 def nullAnalysis(df):
   null_columns=df.isnull().any()
@@ -91,7 +102,6 @@ def nullAnalysis(df):
   print(null_sum)
 
 # Encoding
-
 #  Encoding con LabelEncoder
 def encodingLabel(df, target, mapping):
     label_encoder = LabelEncoder()
@@ -100,7 +110,6 @@ def encodingLabel(df, target, mapping):
     return df
 
 # Tratamiento de Outliers
-
 #  Algoritmo LOF
 def lof(X, contamination, plot):
     lof=LocalOutlierFactor(n_neighbors=3,contamination=contamination)
@@ -354,7 +363,7 @@ def randomforestOOB(pipeline, X_train, y_train):
   random_search = RandomizedSearchCV(
       estimator=pipeline,
       param_distributions=param_distributions,
-      n_iter=100,
+      n_iter=50,
       cv=5,
       scoring='accuracy',
       verbose=1,
@@ -488,12 +497,13 @@ def main():
     df = load()
     
     # Dropear ID
-    df = df.iloc[:, df.columns != 'Sequence_Name'] 
+    df = df.iloc[:, df.columns != 'Sequence_Name']
 
     #Analisis exploratorio
     #analisisNumericas(df)
     #plotTarget(df, 'localization_site')
-
+    #correlacion(df, 'localization_site')
+    
     # Analisis de nulos
     #nullAnalysis(df)
     
@@ -501,7 +511,9 @@ def main():
     #df = df[['localization_site', 'alm', 'mit', 'mcg', 'gvh', 'vac', 'nuc', 'pox', 'erl']] 
 
     # Tratamiento de outliers
-    df = tratamientoOutliers(df, 'localization_site', contamination=0.01, plot=False)
+    #plotTarget(df, 'localization_site')
+    df = tratamientoOutliers(df, 'localization_site', contamination=0.01, plot=True)
+    #plotTarget(df, 'localization_site')
 
     # Encoding
     mapping = {
@@ -530,17 +542,10 @@ def main():
 
     # Pipeline: Balanceo, Escalamiento, 
     pipeline = Pipeline([
-        ('smote', SMOTE(k_neighbors=2, random_state=123)),  # Balanceo
+        #('smote', SMOTE(k_neighbors=2, random_state=123)),  # Balanceo
         ('scaler', StandardScaler())       # Escalamiento
     ])
-    '''
-    print(X_train.head())
-    print(y_train.head())
-    a, b = pipeline.fit_resample(X_train, y_train)
-    new_df = pd.DataFrame(a, columns=X_train.columns)
-    new_df['localization_site'] = b 
-    plotTarget(new_df, 'localization_site')
-    '''
+
     # Modelos
 
     # Decision Tree
@@ -557,12 +562,9 @@ def main():
     # Random forest
     # Calibrar co OOB (Out-of-bag)
     #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
-    #modelo = randomforest(rf_pipeline, X_train, y_train)
     #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
     #get_score(modelo, X_test, y_test)
     #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
     #plotRandomForest(X, y)
 
-    
-    
 main()
