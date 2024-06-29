@@ -340,6 +340,9 @@ def adaboostGS(pipeline, X_train, y_train, cv=5):
   return grid_search.best_estimator_
 
 # Random forest
+def randomforestSimple(pipeline, X_train, y_train):
+  pipeline.fit(X_train, y_train)
+
 def randomforestOOB(pipeline, X_train, y_train):
   param_distributions = {
       'classifier__n_estimators': [50, 100, 200, 500, 1000],
@@ -426,27 +429,41 @@ def plotRandomForest(X, y):
 
 # Feature selection
 #  Algoritmo forward selection
-def forward_selection(X, y, cv=5):
-  selected_features = []
-  remaining_features = list(X.columns)
-  best_score = -np.inf
-  while remaining_features:
-    scores = []
-    for feature in remaining_features:
-      current_features = selected_features + [feature]
-      X_subset = X[current_features]
-      model = LogisticRegression(random_state=123)
-      score = np.mean(cross_val_score(model, X_subset, y, cv=cv, scoring='accuracy'))
-      scores.append((score, feature))
-    scores.sort(reverse=True, key=lambda x: x[0])
-    best_score, best_feature = scores[0]
-    selected_features.append(best_feature)
-    remaining_features.remove(best_feature)
-  print(f"Forward selection: {selected_features}, Score: {best_score}")
-  return selected_features
+def forward_selection(X, y, threshold=0.01):
+    scaler = StandardScaler()
+    X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
+    selected_features = []
+    remaining_features = list(X.columns)
+    best_score = -np.inf
+    last_best_score = -np.inf
+
+    while remaining_features:
+        scores = []
+        for feature in remaining_features:
+            current_features = selected_features + [feature]
+            X_subset = X[current_features]
+            model = LogisticRegression(random_state=123)
+            score = np.mean(cross_val_score(model, X_subset, y, cv=5, scoring='accuracy'))
+            scores.append((score, feature))
+        
+        scores.sort(reverse=True, key=lambda x: x[0])
+        best_score, best_feature = scores[0]
+
+        # Check if the improvement is greater than the threshold
+        if best_score - last_best_score > threshold:
+            selected_features.append(best_feature)
+            remaining_features.remove(best_feature)
+            last_best_score = best_score
+            
+        else:
+            break
+    print(f"Selected Features: {selected_features}, Score: {best_score}")
+    return selected_features
 
 #  Algoritmo Recursive Forward Elimination
-def selectFeatures(X,y, n_features):
+def recursive_forward_elimination(X,y, n_features):
+  scaler = StandardScaler()
+  X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
   model=LogisticRegression()
   rfe=RFE(model,n_features_to_select=n_features)
   fit=rfe.fit(X, y)
@@ -455,6 +472,8 @@ def selectFeatures(X,y, n_features):
 
 # Feature selection con Random Forest
 def rf_features(X, y, n_estimators=100):
+  scaler = StandardScaler()
+  X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
   rf = RandomForestClassifier(n_estimators=n_estimators, random_state=123, oob_score=True)
   rf.fit(X, y)
   importances = rf.feature_importances_
@@ -474,12 +493,15 @@ def main():
     #Analisis exploratorio
     #analisisNumericas(df)
     #plotTarget(df, 'localization_site')
+
+    # Analisis de nulos
+    #nullAnalysis(df)
     
     # Aplicar feature selection
     #df = df[['localization_site', 'alm', 'mit', 'mcg', 'gvh', 'vac', 'nuc', 'pox', 'erl']] 
 
-    # Analisis de nulos
-    #nullAnalysis(df)
+    # Tratamiento de outliers
+    df = tratamientoOutliers(df, 'localization_site', contamination=0.01, plot=False)
 
     # Encoding
     mapping = {
@@ -495,14 +517,16 @@ def main():
       'ERL': 9,
     }
     df = encodingLabel(df, 'localization_site', mapping)
-    
-    # Tratamiento de outliers    
-    #df = tratamientoOutliers(df, 'localization_site', contamination=0.01, plot=False)
 
     # Separar X, y, train, test
     X = df.drop('localization_site',axis=1)
     y = df['localization_site']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=123)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=123)
+
+    # Feature selection
+    #forward_selection(X, y, 0.001)
+    #recursive_forward_elimination(X, y, 10)
+    #rf_features(X, y)
 
     # Pipeline: Balanceo, Escalamiento, 
     pipeline = Pipeline([
@@ -520,9 +544,9 @@ def main():
     # Modelos
 
     # Decision Tree
-    dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
-    modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
-    get_score(modelo, X_test, y_test)
+    #dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
+    #modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
+    #get_score(modelo, X_test, y_test)
     
     # Ada Boost
     #ab_pipeline = agregar_modelo(pipeline, AdaBoostClassifier(algorithm="SAMME", random_state=123))
@@ -533,14 +557,12 @@ def main():
     # Random forest
     # Calibrar co OOB (Out-of-bag)
     #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
+    #modelo = randomforest(rf_pipeline, X_train, y_train)
     #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
     #get_score(modelo, X_test, y_test)
     #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
     #plotRandomForest(X, y)
 
-    # Feature selection
-    #forward_selection(X, y)
-    #selectFeatures(X, y, 10)
-    #rf_features(X, y)
+    
     
 main()
