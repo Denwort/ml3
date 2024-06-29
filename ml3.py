@@ -164,7 +164,7 @@ def tratamientoOutliers(df, target, contamination, plot):
   df = df.reset_index(drop=True)
   return df
 
-
+'''
 # BORRADOR
 def decisionTreeTunning1(X,y):
   X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -293,7 +293,7 @@ def decisionTreeTunning2(data, target):
   #acc=accuracy_score(yTest,pred)
   #print(acc)
   #print(dt.tree_.threshold)
-
+'''
 
 # Modelos
 
@@ -306,7 +306,7 @@ def get_score(modelo, X_test, y_test):
     y_pred = modelo.predict(X_test)
     print("Reporte de Clasificación:")
     print(classification_report(y_test, y_pred, zero_division=0))
-    print("Accuracy: ", accuracy_score(y_test, y_pred))
+    print("F1 score: ", f1_score(y_test, y_pred, average='weighted'))
 
 def nested_cv(pipeline, gs_function, X, y):
     outer_cv = KFold(n_splits=5, shuffle=True, random_state=123)
@@ -561,9 +561,10 @@ def main():
 
     # Random forest
     # Calibrar co OOB (Out-of-bag)
-    #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
-    #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
-    #get_score(modelo, X_test, y_test)
+    rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
+    #modelo = randomforest(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
+    modelo = randomforestOOB(rf_pipeline, X_train, y_train)
+    get_score(modelo, X_test, y_test)
     #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
     #plotRandomForest(X, y)
 
