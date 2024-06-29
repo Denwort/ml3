@@ -306,7 +306,7 @@ def get_score(modelo, X_test, y_test):
     y_pred = modelo.predict(X_test)
     print("Reporte de Clasificación:")
     print(classification_report(y_test, y_pred, zero_division=0))
-    print("F1 score: ", f1_score(y_test, y_pred, average='weighted'))
+    print("f1 score: ", f1_score(y_test, y_pred, average='weighted'))
 
 def nested_cv(pipeline, gs_function, X, y):
     outer_cv = KFold(n_splits=5, shuffle=True, random_state=123)
@@ -329,7 +329,7 @@ def decisiontreeGS(pipeline, X_train, y_train, cv=5):
       'classifier__min_samples_split': [2, 5, 10],
       'classifier__min_samples_leaf': [1, 2, 4]
   }
-  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=1, n_jobs=-1)
+  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='f1_weighted', verbose=1, n_jobs=-1)
   grid_search.fit(X_train, y_train)
   print("Mejores hiperparámetros:")
   print(grid_search.best_params_)
@@ -342,7 +342,7 @@ def adaboostGS(pipeline, X_train, y_train, cv=5):
       'classifier__n_estimators': [10, 100, 200, 1000],
       'classifier__learning_rate': [0.001, 0.005, .01, 0.05, 0.1, 0.5, 1, 5, 10]
   }
-  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='accuracy', verbose=1, n_jobs=-1)
+  grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='f1_weighted', verbose=1, n_jobs=-1)
   grid_search.fit(X_train, y_train)
   print("Mejores hiperparámetros:")
   print(grid_search.best_params_)
@@ -365,7 +365,7 @@ def randomforestOOB(pipeline, X_train, y_train):
       param_distributions=param_distributions,
       n_iter=50,
       cv=5,
-      scoring='accuracy',
+      scoring='f1_weighted',
       verbose=1,
       n_jobs=-1,
       random_state=123
@@ -549,9 +549,9 @@ def main():
     # Modelos
 
     # Decision Tree
-    #dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
-    #modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
-    #get_score(modelo, X_test, y_test)
+    dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
+    modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
+    get_score(modelo, X_test, y_test)
     
     # Ada Boost
     #ab_pipeline = agregar_modelo(pipeline, AdaBoostClassifier(algorithm="SAMME", random_state=123))
@@ -561,10 +561,10 @@ def main():
 
     # Random forest
     # Calibrar co OOB (Out-of-bag)
-    rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
+    #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
     #modelo = randomforest(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
-    modelo = randomforestOOB(rf_pipeline, X_train, y_train)
-    get_score(modelo, X_test, y_test)
+    #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
+    #get_score(modelo, X_test, y_test)
     #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
     #plotRandomForest(X, y)
 
