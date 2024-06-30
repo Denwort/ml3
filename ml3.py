@@ -364,8 +364,9 @@ def adaboostGS(pipeline, X_train, y_train, cv=5):
   return grid_search.best_estimator_
 
 # Random forest
-def randomforestSimple(pipeline, X_train, y_train):
+def randomforestSinAfinamiento(pipeline, X_train, y_train):
   pipeline.fit(X_train, y_train)
+  return pipeline
 
 def randomforestOOB(pipeline, X_train, y_train):
   param_distributions = {
@@ -553,9 +554,9 @@ def main():
     # Modelos
 
     # Decision Tree
-    dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
-    modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
-    get_score(modelo, X_test, y_test, plot=True)
+    #dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
+    #modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
+    #get_score(modelo, X_test, y_test, plot=True)
     
     # Ada Boost
     #ab_pipeline = agregar_modelo(pipeline, AdaBoostClassifier(algorithm="SAMME", random_state=123))
@@ -565,10 +566,10 @@ def main():
 
     # Random forest
     # Calibrar co OOB (Out-of-bag)
-    #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
-    #modelo = randomforest(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
+    rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
+    modelo = randomforestSinAfinamiento(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
     #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
-    #get_score(modelo, X_test, y_test, plot=True)
+    get_score(modelo, X_test, y_test, plot=True)
     #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
     #plotRandomForest(X, y)
 
