@@ -170,137 +170,6 @@ def tratamientoOutliers(df, target, contamination, plot):
   df = df.reset_index(drop=True)
   return df
 
-'''
-# BORRADOR
-def decisionTreeTunning1(X,y):
-  X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-  dt_classifier = DecisionTreeClassifier(random_state=42)
-  param_grid = {
-      'max_depth': [None, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
-      'min_samples_split': [2, 5, 10, 20],
-      'min_samples_leaf': [1, 2, 5, 10],
-      'criterion': ['gini', 'entropy']
-  }
-  grid_search = GridSearchCV(estimator=dt_classifier, param_grid=param_grid, cv=5, n_jobs=-1, verbose=2)
-  grid_search.fit(X_train, y_train)
-  print("Hiperparametros ",grid_search.best_params_)
-  print("Ccore ",grid_search.best_score_)
-
-  best_model = grid_search.best_estimator_
-  y_pred = best_model.predict(X_test)
-  accuracy = accuracy_score(y_test, y_pred)
-  print(f"Precisión en el conjunto de prueba: {accuracy}")
-  return grid_search.best_score_
-
-def decisionTreeValidation(X, y):
-    # Logistic regresion
-    X = X.values
-    dt=DecisionTreeClassifier(criterion= 'gini', max_features='log2', max_depth= 10, min_samples_leaf= 2, min_samples_split= 20, random_state=123)
-    skf=KFold(n_splits=10,shuffle=True,random_state=123)
-
-    # Calcular todas las etiquetas
-    true_labels = []
-    predicted_labels = []
-    for train_index, test_index in skf.split(X, y):
-        X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = y[train_index], y[test_index]
-        dt.fit(X_train, y_train)
-        y_pred = dt.predict(X_test)
-        true_labels.extend(y_test)
-        predicted_labels.extend(y_pred)
-
-    # Reporte de clasificación
-    print("\nReporte de Clasificación:")
-    scores = cross_val_score(dt, X, y, cv=skf, scoring='f1_weighted')
-    f1_weighted = scores.mean()
-    print(classification_report(true_labels, predicted_labels))
-    print("F1-SCORE: ", f1_weighted)
-
-    # Matriz de confusión
-    conf_matrix = confusion_matrix(true_labels, predicted_labels)
-    plt.figure(figsize=(8, 6))
-    mapping = {'CYT': 0, 'NUC': 1, 'MIT': 2, 'ME3': 3, 'ME2': 4, 'ME1': 5, 'EXC': 6, 'VAC': 7, 'POX': 8, 'ERL': 9}
-    sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d', cbar=False,
-                xticklabels=mapping,
-                yticklabels=mapping)
-    plt.xlabel('Predicción')
-    plt.ylabel('Etiqueta Real')
-    plt.title('Matriz de Confusión')
-    plt.show()
-
-def decisionTreeTunning2(data, target):
-  train_val,test=train_test_split(data, test_size=0.1,random_state=42)
-  train,validate=train_test_split(train_val, test_size=0.2,random_state=42)
-  XTrain=train.drop(target,axis="columns")
-  yTrain=train[target]
-  XTest=test.drop(target,axis="columns")
-  yTest=test[target]
-  XVal=validate.drop(target,axis="columns")
-  yVal=validate[target]
-  
-  accEntropyTrain=[]
-  accEntropyVal=[]
-  accGiniTrain=[]
-  accGiniVal=[]
-  maxDepth=[]
-
-  for i in range(1,40):
-      # Entropy
-      model=DecisionTreeClassifier(criterion="entropy",max_features="log2",max_depth=i,random_state=2)
-      model.fit(XTrain,yTrain)
-      #  Train
-      pred=model.predict(XTrain)
-      acc=accuracy_score(yTrain,pred)
-      accEntropyTrain.append(acc)
-      #  Validate
-      pred=model.predict(XVal)
-      acc=accuracy_score(yVal,pred)
-      accEntropyVal.append(acc)
-      # Gini
-      model=DecisionTreeClassifier(criterion="gini",max_features="log2",max_depth=i,random_state=2)
-      model.fit(XTrain,yTrain)
-      # Train
-      pred=model.predict(XTrain)
-      acc=accuracy_score(yTrain,pred)
-      accGiniTrain.append(acc)
-      #  Validate
-      pred=model.predict(XVal)
-      acc=accuracy_score(yVal,pred)
-      accGiniVal.append(acc)
-      
-      maxDepth.append(i)
-  
-  print("Entropy validation: ", accEntropyVal)
-
-  print("train data")
-  print(accEntropyTrain)
-  
-  
-  axes = plt.gca()
-  axes.set_xlim([1,40])
-  axes.set_ylim([0.80,1.05])
-  
-  
-  dataEntropy=pd.DataFrame({"acc_entropyT":pd.Series(accEntropyTrain),"acc_entropy":pd.Series(accEntropyVal),"max_depth":pd.Series(maxDepth)})
-  dataGini=pd.DataFrame({"acc_giniT":pd.Series(accGiniTrain),"acc_gini":pd.Series(accGiniVal),"max_depth":pd.Series(maxDepth)})
-
-  plt.plot("max_depth","acc_entropy",'b',data=dataEntropy,label="entropy")
-  plt.plot("max_depth","acc_entropyT",'r',data=dataEntropy,label="entropy_train")
-  plt.plot("max_depth","acc_gini",'g',data=dataGini,label="gini")
-  plt.plot("max_depth","acc_giniT",'y',data=dataGini,label="gini_train")
-  plt.xlabel("max_depth")
-  plt.ylabel("accuracy")
-  plt.legend()
-  plt.show()
-  
-  #dt=DecisionTreeClassifier(criterion="entropy",max_features="log2",max_depth=5,random_state=2)
-  #dt.fit(XTrain,yTrain)
-  #pred=model.predict(XTest)
-  #acc=accuracy_score(yTest,pred)
-  #print(acc)
-  #print(dt.tree_.threshold)
-'''
-
 # Modelos
 
 def agregar_modelo(pipeline, classifier):
@@ -351,6 +220,52 @@ def decisiontreeGS(pipeline, X_train, y_train, cv=5):
   
   return grid_search.best_estimator_
 
+
+def decisionTreePlot(XTrain, yTrain, XVal, yVal):
+  accEntropyTrain=[]
+  accEntropyVal=[]
+  accGiniTrain=[]
+  accGiniVal=[]
+  maxDepth=[]
+  for i in range(1,40):
+      # Entropy
+      model=DecisionTreeClassifier(criterion="entropy",max_features="log2",max_depth=i,random_state=2)
+      model.fit(XTrain,yTrain)
+      #  Train
+      pred=model.predict(XTrain)
+      acc=f1_score(yTrain,pred, average='weighted')
+      accEntropyTrain.append(acc)
+      #  Validate
+      pred=model.predict(XVal)
+      acc=f1_score(yVal,pred, average='weighted')
+      accEntropyVal.append(acc)
+      # Gini
+      model=DecisionTreeClassifier(criterion="gini",max_features="log2",max_depth=i,random_state=2)
+      model.fit(XTrain,yTrain)
+      # Train
+      pred=model.predict(XTrain)
+      acc=f1_score(yTrain,pred, average='weighted')
+      accGiniTrain.append(acc)
+      #  Validate
+      pred=model.predict(XVal)
+      acc=f1_score(yVal,pred, average='weighted')
+      accGiniVal.append(acc)
+    
+      maxDepth.append(i)
+  axes = plt.gca()
+  axes.set_xlim([1,40])
+  axes.set_ylim([0.80,1.05])
+  dataEntropy=pd.DataFrame({"acc_entropyT":pd.Series(accEntropyTrain),"acc_entropy":pd.Series(accEntropyVal),"max_depth":pd.Series(maxDepth)})
+  dataGini=pd.DataFrame({"acc_giniT":pd.Series(accGiniTrain),"acc_gini":pd.Series(accGiniVal),"max_depth":pd.Series(maxDepth)})
+  plt.plot("max_depth","acc_entropy",'b',data=dataEntropy,label="entropy_test")
+  plt.plot("max_depth","acc_entropyT",'r',data=dataEntropy,label="entropy_train")
+  plt.plot("max_depth","acc_gini",'g',data=dataGini,label="gini_test")
+  plt.plot("max_depth","acc_giniT",'y',data=dataGini,label="gini_train")
+  plt.xlabel("max_depth")
+  plt.ylabel("f1 score")
+  plt.legend()
+  plt.show()
+
 #  AdaBoost
 def adaboostGS(pipeline, X_train, y_train, cv=5):
   param_grid = {
@@ -363,17 +278,45 @@ def adaboostGS(pipeline, X_train, y_train, cv=5):
   print(grid_search.best_params_)
   return grid_search.best_estimator_
 
+def adaboostPlot(XTrain, yTrain, XVal, yVal):
+  learningR=np.linspace(0.001,1.5,10)
+  learning=[]
+  accTrain=[]
+  accVal=[]
+  
+  for i in range(1,200):
+    model = AdaBoostClassifier(n_estimators=i, learning_rate=1, algorithm="SAMME")
+    model.fit(XTrain, yTrain)
+    pred = model.predict(XTrain)
+    acc = f1_score(yTrain, pred, average='weighted')
+    accTrain.append(acc)
+    val = model.predict(XVal)
+    acc = f1_score(yVal, val, average='weighted')
+    accVal.append(acc)
+    learning.append(i)
+  
+  plt.figure(2)
+  axes = plt.gca()
+  axes.set_xlim([0,1.5])
+  axes.set_ylim([0.6,1.0])
+  d=pd.DataFrame({"accTrain":pd.Series(accTrain),"accVal":pd.Series(accVal),"learningRate":pd.Series(learning)})
+  plt.plot("learningRate","accTrain",data=d,label="train")
+  plt.plot("learningRate","accVal",data=d,label="val")
+  plt.xlabel("n_estimators")
+  plt.ylabel("f1 score")
+  plt.legend()
+  plt.show()
+   
 # Random forest
 def randomforestSinAfinamiento(pipeline, X_train, y_train):
   pipeline.fit(X_train, y_train)
   return pipeline
 
-def randomforestOOB(pipeline, X_train, y_train):
+def randomforestRGS(pipeline, X_train, y_train):
   param_distributions = {
       'classifier__n_estimators': [50, 100, 200, 500, 1000],
       'classifier__max_features': [None, 'sqrt', 'log2'],
       'classifier__max_depth': [None, 1, 5, 10, 20, 40],
-      'classifier__bootstrap': [True]
   }
 
   random_search = RandomizedSearchCV(
@@ -394,63 +337,34 @@ def randomforestOOB(pipeline, X_train, y_train):
   return random_search.best_estimator_
 
 
-def plotRandomForest(X, y):
-  ensemble_clfs = [
-      (
-          "RandomForestClassifier, max_features='sqrt'",
-          RandomForestClassifier(
-              warm_start=True,
-              oob_score=True,
-              max_features="sqrt",
-              random_state=123,
-          ),
-      ),
-      (
-          "RandomForestClassifier, max_features='log2'",
-          RandomForestClassifier(
-              warm_start=True,
-              max_features="log2",
-              oob_score=True,
-              random_state=123,
-          ),
-      ),
-      (
-          "RandomForestClassifier, max_features=None",
-          RandomForestClassifier(
-              warm_start=True,
-              max_features=None,
-              oob_score=True,
-              random_state=123,
-          ),
-      ),
-  ]
-
-  # Map a classifier name to a list of (<n_estimators>, <error rate>) pairs.
-  error_rate = OrderedDict((label, []) for label, _ in ensemble_clfs)
-
-  # Range of `n_estimators` values to explore.
-  min_estimators = 50
-  max_estimators = 500
-
-  for label, clf in ensemble_clfs:
-      for i in range(min_estimators, max_estimators + 1, 5):
-          clf.set_params(n_estimators=i)
-          clf.fit(X, y)
-
-          # Record the OOB error for each `n_estimators=i` setting.
-          oob_error = 1 - clf.oob_score_
-          error_rate[label].append((i, oob_error))
-
-  # Generate the "OOB error rate" vs. "n_estimators" plot.
-  for label, clf_err in error_rate.items():
-      xs, ys = zip(*clf_err)
-      plt.plot(xs, ys, label=label)
-
-  plt.xlim(min_estimators, max_estimators)
-  plt.xlabel("n_estimators")
-  plt.ylabel("OOB error rate")
-  plt.legend(loc="upper right")
-  plt.show()
+def plotRandomForest(X_train, y_train, X_test, y_test):
+    nEst=[]
+    for i in range(1,200,3):
+        nEst.append(i)
+    max_depth = 10  # Definir la profundidad máxima de los árboles
+    max_features = 'sqrt'  # Número de características a considerar para cada división
+    random_state = 123  # Semilla para reproducibilidad
+    f1_scores = []
+    for n_estimators in nEst:
+        # Crear el clasificador con los parámetros actuales
+        rf_clf = RandomForestClassifier(
+            n_estimators=n_estimators,
+            max_depth=max_depth,
+            max_features=max_features,
+            bootstrap=True,
+            oob_score=True,
+            random_state=random_state
+        )
+        rf_clf.fit(X_train, y_train)
+        y_pred = rf_clf.predict(X_test)
+        f1 = f1_score(y_test, y_pred, average='weighted')
+        f1_scores.append(f1)
+    plt.figure(figsize=(10, 6))
+    plt.plot(nEst, f1_scores, marker='o', linestyle='-', color='b')
+    plt.xlabel('n_estimators')
+    plt.ylabel('F1 score')
+    plt.grid(True)
+    plt.show()
 
 # Feature selection
 #  Algoritmo forward selection
@@ -548,7 +462,7 @@ def main():
         #('borderline_smote', BorderlineSMOTE(k_neighbors=2,random_state=123)), #Balanceo
         #('smotetomek', SMOTETomek(smote = SMOTE(k_neighbors=2, random_state=123), random_state=123)), #Balanceo
         #('smoteenn', SMOTEENN(smote = SMOTE(k_neighbors=2, random_state=123),random_state=123)), #Balanceo
-        ('scaler', StandardScaler()) # Escalamiento
+        ('scaler', MinMaxScaler()) # Escalamiento
     ])
 
     # Modelos
@@ -557,20 +471,20 @@ def main():
     #dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
     #modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
     #get_score(modelo, X_test, y_test, plot=True)
+    #decisionTreePlot(X_train, y_train, X_test, y_test)
     
     # Ada Boost
     #ab_pipeline = agregar_modelo(pipeline, AdaBoostClassifier(algorithm="SAMME", random_state=123))
     #modelo = adaboostGS(ab_pipeline, X_train, y_train)
     #get_score(modelo, X_test, y_test, plot=True)
     #nested_cv(ab_pipeline, adaboostGS, X, y)
+    #adaboostPlot(X_train, y_train, X_test, y_test)
 
     # Random forest
-    # Calibrar co OOB (Out-of-bag)
-    rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
-    modelo = randomforestSinAfinamiento(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
-    #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
-    get_score(modelo, X_test, y_test, plot=True)
-    #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
-    #plotRandomForest(X, y)
+    #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(bootstrap=True, random_state=123))
+    #modelo = randomforestSinAfinamiento(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
+    #modelo = randomforestRGS(rf_pipeline, X_train, y_train)
+    #get_score(modelo, X_test, y_test, plot=False)
+    #plotRandomForest(X_train, y_train, X_test, y_test)
 
 main()
