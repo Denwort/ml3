@@ -33,6 +33,10 @@ from sklearn.model_selection import GridSearchCV
 from imblearn.pipeline import Pipeline
 from sklearn.base import clone
 from imblearn.over_sampling import SMOTE
+from imblearn.over_sampling import BorderlineSMOTE
+from imblearn.combine import SMOTETomek
+from imblearn.combine import SMOTEENN
+from imblearn.over_sampling import ADASYN
 
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
@@ -517,6 +521,9 @@ def main():
     df = tratamientoOutliers(df, 'localization_site', contamination=0.07, plot=False)
     #plotTarget(df, 'localization_site')
 
+    # Sin esto el smotetomek y smoteenn no funcionan
+    #smote = SMOTE(k_neighbors=2, random_state=123)
+
     # Encoding
     mapping = {
       'CYT': 0,
@@ -545,6 +552,9 @@ def main():
     # Pipeline: Balanceo, Escalamiento
     pipeline = Pipeline([
         #('smote', SMOTE(k_neighbors=2, random_state=123)), # Balanceo
+        #('borderline_smote', BorderlineSMOTE(k_neighbors=2,random_state=123)), #Balanceo
+        #('smotetomek', SMOTETomek(smote = smote, random_state=123)), #Balanceo
+        #('smoteenn', SMOTEENN(smote = smote,random_state=123)), #Balanceo
         ('scaler', StandardScaler()) # Escalamiento
     ])
 
@@ -567,7 +577,7 @@ def main():
     #modelo = randomforest(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
     modelo = randomforestOOB(rf_pipeline, X_train, y_train)
     get_score(modelo, X_test, y_test)
-    #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
-    #plotRandomForest(X, y)
+    print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
+    plotRandomForest(X, y)
 
 main()
