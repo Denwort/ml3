@@ -466,11 +466,11 @@ def forward_selection(X, y, threshold=0.01):
             
         else:
             break
-    print(f"Selected Features: {selected_features}, Score: {best_score}")
+    print(f"Forward selection: {selected_features}, Score: {best_score}")
     return selected_features
 
-#  Algoritmo Recursive Forward Elimination
-def recursive_forward_elimination(X,y, n_features):
+#  Algoritmo Recursive Feature Elimination
+def recursive_feature_elimination(X,y, n_features):
   scaler = StandardScaler()
   X = pd.DataFrame(scaler.fit_transform(X), columns=X.columns)
   model=LogisticRegression()
@@ -489,8 +489,10 @@ def rf_features(X, y, n_estimators=100):
   feature_names = X.columns
   feature_importances = pd.DataFrame({'feature': feature_names, 'importance': importances})
   feature_importances = feature_importances.sort_values(by='importance', ascending=False)
-  print("Random forest features: ", feature_importances)
-  return feature_importances
+  threshold = np.median(importances)
+  important_features = feature_importances[feature_importances['importance'] > threshold]['feature']
+  print("Random forest features:\n", important_features)
+  return important_features
 
 def main():
     
@@ -508,11 +510,11 @@ def main():
     #nullAnalysis(df)
     
     # Aplicar feature selection
-    #df = df[['localization_site', 'alm', 'mit', 'mcg', 'gvh', 'vac', 'nuc', 'pox', 'erl']] 
+    #df = df[['localization_site', 'alm', 'nuc', 'mit', 'mcg', 'gvh']] 
 
     # Tratamiento de outliers
     #plotTarget(df, 'localization_site')
-    df = tratamientoOutliers(df, 'localization_site', contamination=0.01, plot=True)
+    df = tratamientoOutliers(df, 'localization_site', contamination=0.07, plot=False)
     #plotTarget(df, 'localization_site')
 
     # Encoding
@@ -530,28 +532,28 @@ def main():
     }
     df = encodingLabel(df, 'localization_site', mapping)
 
-    # Separar X, y, train, test
+    # Dividir dataset
     X = df.drop('localization_site',axis=1)
     y = df['localization_site']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, stratify=y, random_state=123)
 
     # Feature selection
-    #forward_selection(X, y, 0.001)
-    #recursive_forward_elimination(X, y, 10)
-    #rf_features(X, y)
+    #forward_selection(X, y, 0.01)
+    #recursive_feature_elimination(X, y, 5)
+    #rf_features(X, y, 100)
 
-    # Pipeline: Balanceo, Escalamiento, 
+    # Pipeline: Balanceo, Escalamiento
     pipeline = Pipeline([
-        #('smote', SMOTE(k_neighbors=2, random_state=123)),  # Balanceo
-        ('scaler', StandardScaler())       # Escalamiento
+        #('smote', SMOTE(k_neighbors=2, random_state=123)), # Balanceo
+        ('scaler', StandardScaler()) # Escalamiento
     ])
 
     # Modelos
 
     # Decision Tree
-    dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
-    modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
-    get_score(modelo, X_test, y_test)
+    #dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
+    #modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
+    #get_score(modelo, X_test, y_test)
     
     # Ada Boost
     #ab_pipeline = agregar_modelo(pipeline, AdaBoostClassifier(algorithm="SAMME", random_state=123))
@@ -561,10 +563,10 @@ def main():
 
     # Random forest
     # Calibrar co OOB (Out-of-bag)
-    #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
+    rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
     #modelo = randomforest(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
-    #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
-    #get_score(modelo, X_test, y_test)
+    modelo = randomforestOOB(rf_pipeline, X_train, y_train)
+    get_score(modelo, X_test, y_test)
     #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
     #plotRandomForest(X, y)
 
