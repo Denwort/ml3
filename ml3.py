@@ -54,6 +54,8 @@ def load():
   df = pd.read_csv("yeast.data", sep='\s+', header=None)
   columns = ["Sequence_Name", "mcg", "gvh", "alm", "mit", "erl", "pox", "vac", "nuc", "localization_site"]
   df.columns = columns
+  # Dropear ID
+  df = df.iloc[:, df.columns != 'Sequence_Name']
   return df
 
 # Analisis exploratorio
@@ -329,9 +331,7 @@ def nested_cv(pipeline, gs_function, X, y):
 def decisiontreeGS(pipeline, X_train, y_train, cv=5):
   param_grid = {
       'classifier__criterion': ['gini', 'entropy'],
-      'classifier__max_depth': [None, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50],
-      'classifier__min_samples_split': [2, 5, 10],
-      'classifier__min_samples_leaf': [1, 2, 4]
+      'classifier__max_depth': [None, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50]
   }
   grid_search = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring='f1_weighted', verbose=1, n_jobs=-1)
   grid_search.fit(X_train, y_train)
@@ -501,11 +501,8 @@ def rf_features(X, y, n_estimators=100):
 def main():
     
     df = load()
-    
-    # Dropear ID
-    df = df.iloc[:, df.columns != 'Sequence_Name']
 
-    #Analisis exploratorio
+    # Analisis exploratorio
     #analisisNumericas(df)
     #plotTarget(df, 'localization_site')
     #correlacion(df, 'localization_site')
@@ -517,26 +514,10 @@ def main():
     #df = df[['localization_site', 'alm', 'nuc', 'mit', 'mcg', 'gvh']] 
 
     # Tratamiento de outliers
-    #plotTarget(df, 'localization_site')
     df = tratamientoOutliers(df, 'localization_site', contamination=0.07, plot=False)
-    #plotTarget(df, 'localization_site')
-
-    # Sin esto el smotetomek y smoteenn no funcionan
-    #smote = SMOTE(k_neighbors=2, random_state=123)
 
     # Encoding
-    mapping = {
-      'CYT': 0,
-      'NUC': 1,
-      'MIT': 2,
-      'ME3': 3,
-      'ME2': 4,
-      'ME1': 5,
-      'EXC': 6,
-      'VAC': 7,
-      'POX': 8,
-      'ERL': 9,
-    }
+    mapping = {'CYT': 0,'NUC': 1,'MIT': 2,'ME3': 3,'ME2': 4,'ME1': 5,'EXC': 6,'VAC': 7,'POX': 8,'ERL': 9}
     df = encodingLabel(df, 'localization_site', mapping)
 
     # Dividir dataset
@@ -553,8 +534,8 @@ def main():
     pipeline = Pipeline([
         #('smote', SMOTE(k_neighbors=2, random_state=123)), # Balanceo
         #('borderline_smote', BorderlineSMOTE(k_neighbors=2,random_state=123)), #Balanceo
-        #('smotetomek', SMOTETomek(smote = smote, random_state=123)), #Balanceo
-        #('smoteenn', SMOTEENN(smote = smote,random_state=123)), #Balanceo
+        #('smotetomek', SMOTETomek(smote = SMOTE(k_neighbors=2, random_state=123), random_state=123)), #Balanceo
+        #('smoteenn', SMOTEENN(smote = SMOTE(k_neighbors=2, random_state=123),random_state=123)), #Balanceo
         ('scaler', StandardScaler()) # Escalamiento
     ])
 
@@ -573,11 +554,11 @@ def main():
 
     # Random forest
     # Calibrar co OOB (Out-of-bag)
-    rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
+    #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
     #modelo = randomforest(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
-    modelo = randomforestOOB(rf_pipeline, X_train, y_train)
-    get_score(modelo, X_test, y_test)
-    print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
-    plotRandomForest(X, y)
+    #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
+    #get_score(modelo, X_test, y_test)
+    #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
+    #plotRandomForest(X, y)
 
 main()
