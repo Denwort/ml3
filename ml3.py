@@ -308,11 +308,22 @@ def agregar_modelo(pipeline, classifier):
     model.steps.append(('classifier', classifier))
     return model
 
-def get_score(modelo, X_test, y_test):
+def get_score(modelo, X_test, y_test, plot=False):
     y_pred = modelo.predict(X_test)
     print("Reporte de Clasificación:")
     print(classification_report(y_test, y_pred, zero_division=0))
     print("f1 score: ", f1_score(y_test, y_pred, average='weighted'))
+    if plot == True:
+      conf_matrix = confusion_matrix(y_test, y_pred)
+      plt.figure(figsize=(8, 6))
+      mapping = {'CYT': 0, 'NUC': 1, 'MIT': 2, 'ME3': 3, 'ME2': 4, 'ME1': 5, 'EXC': 6, 'VAC': 7, 'POX': 8, 'ERL': 9}
+      sns.heatmap(conf_matrix, annot=True, cmap='Blues', fmt='d', cbar=False,
+                  xticklabels=mapping,
+                  yticklabels=mapping)
+      plt.xlabel('Predicción')
+      plt.ylabel('Etiqueta Real')
+      plt.title('Matriz de Confusión')
+      plt.show()
 
 def nested_cv(pipeline, gs_function, X, y):
     outer_cv = KFold(n_splits=5, shuffle=True, random_state=123)
@@ -542,14 +553,14 @@ def main():
     # Modelos
 
     # Decision Tree
-    #dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
-    #modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
-    #get_score(modelo, X_test, y_test)
+    dt_pipeline = agregar_modelo(pipeline, DecisionTreeClassifier(random_state=123))
+    modelo = decisiontreeGS(dt_pipeline, X_train, y_train)
+    get_score(modelo, X_test, y_test, plot=True)
     
     # Ada Boost
     #ab_pipeline = agregar_modelo(pipeline, AdaBoostClassifier(algorithm="SAMME", random_state=123))
     #modelo = adaboostGS(ab_pipeline, X_train, y_train)
-    #get_score(modelo, X_test, y_test)
+    #get_score(modelo, X_test, y_test, plot=True)
     #nested_cv(ab_pipeline, adaboostGS, X, y)
 
     # Random forest
@@ -557,7 +568,7 @@ def main():
     #rf_pipeline = agregar_modelo(pipeline, RandomForestClassifier(oob_score=True, random_state=123))
     #modelo = randomforest(rf_pipeline, X_train, y_train) # TRanfom forest sin afinacion de hyperparametros
     #modelo = randomforestOOB(rf_pipeline, X_train, y_train)
-    #get_score(modelo, X_test, y_test)
+    #get_score(modelo, X_test, y_test, plot=True)
     #print(f"OOB Score: {modelo.named_steps['classifier'].oob_score_}")
     #plotRandomForest(X, y)
 
